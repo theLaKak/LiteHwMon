@@ -31,6 +31,7 @@
                 <ContextMenu>
                     <MenuItem Header="显示窗口" Click="TrayOpen_Click" FontWeight="SemiBold"/>
                     <MenuItem Header="OSD 悬浮窗" Tag="osd" IsCheckable="True" Click="TrayOsd_Click"/>
+                    <MenuItem Header="锁定 OSD（鼠标穿透）" Tag="osdlock" IsCheckable="True" Click="TrayOsdLock_Click"/>
                     <MenuItem Header="OSD 设置…" Click="TrayOsdSettings_Click"/>
                     <Separator/>
                     <MenuItem Header="启动时请求管理员权限" Tag="elevate" IsCheckable="True" Click="TrayElevate_Click"

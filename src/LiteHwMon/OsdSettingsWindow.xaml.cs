@@ -1,6 +1,8 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
 using LiteHwMon.Core;
 using LiteHwMon.Ui;
 
@@ -16,12 +18,35 @@ public partial class OsdSettingsWindow : Window
     // 初始为 true：XAML 解析时 Slider 的 ValueChanged 会先于 LoadSettings 触发
     private bool _loading = true;
 
+    /// <summary>硬盘活动率的说明（含义 / 数值解释 / 数据来源 / 适用场景）。</summary>
+    private const string DiskActivityTip =
+        "硬盘活动率（%）\n" +
+        "\n" +
+        "是什么：采样周期内磁盘处于忙碌状态的时间占比。100% 表示该周期内磁盘一直在处理 I/O 请求，0% 表示完全空闲。\n" +
+        "\n" +
+        "数值含义：它衡量的是“忙不忙”，不是“快不快”。活动率与吞吐量没有固定关系 —— 大量小文件随机读写可能长时间 100% 但速度很低；单个大文件顺序读写也可能只占用 20% 就跑满带宽。\n" +
+        "\n" +
+        "数据来源：优先读取硬盘 SMART 的 Activity 传感器（LibreHardwareMonitor）；读取不到时回退到 Windows 性能计数器 PhysicalDisk\\% Idle Time，按“100 − 空闲率”换算。\n" +
+        "\n" +
+        "适用场景：判断卡顿是否由磁盘引起；观察后台更新、杀毒扫描、索引服务对磁盘的持续占用；确认 SSD 是否被长时间写满。";
+
     public OsdSettingsWindow(OsdWindow osd)
     {
         InitializeComponent();
         _osd = osd;
         Loaded += (_, _) => LoadSettings();
-        Closed += (_, _) => App.Settings.Save();
+        // 首次打开时硬件可能还没枚举完（目录为空），枚举完成后补上勾选项
+        _osd.CatalogChanged += OnCatalogChanged;
+        Closed += (_, _) =>
+        {
+            _osd.CatalogChanged -= OnCatalogChanged;
+            App.Settings.Save();
+        };
+    }
+
+    private void OnCatalogChanged()
+    {
+        if (HardwareHost.Children.Count == 0) LoadSettings();
     }
 
     private void LoadSettings()
@@ -66,6 +91,10 @@ public partial class OsdSettingsWindow : Window
                 chk.Checked += MetricCheck_Changed;
                 chk.Unchecked += MetricCheck_Changed;
                 metricsPanel.Children.Add(chk);
+
+                // 硬盘活动率语义容易误解，旁边给一个 ? 说明
+                if (p.Device == DeviceKind.Disk && p.Metric == MetricKind.Load)
+                    metricsPanel.Children.Add(MakeInfoIcon(DiskActivityTip));
             }
             group.Children.Add(metricsPanel);
 
@@ -74,6 +103,8 @@ public partial class OsdSettingsWindow : Window
 
         foreach (ComboBoxItem item in LayoutCombo.Items)
             if ((string)item.Tag == s.OsdLayout) { item.IsSelected = true; break; }
+        foreach (ComboBoxItem item in TitleModeCombo.Items)
+            if ((string)item.Tag == s.OsdTitleMode) { item.IsSelected = true; break; }
         RowSpacingSlider.Value = s.OsdRowSpacing;
         CellSpacingSlider.Value = s.OsdCellSpacing;
         ShowTitleCheck.IsChecked = s.OsdShowTitle;
@@ -193,6 +224,53 @@ public partial class OsdSettingsWindow : Window
         App.Settings.OsdShowLabels = ShowLabelsCheck.IsChecked == true;
         ApplyAndSave();
     }
+
+    private void TitleMode_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading) return;
+        if (TitleModeCombo.SelectedItem is ComboBoxItem { Tag: string tag })
+        {
+            App.Settings.OsdTitleMode = tag;
+            ApplyAndSave(); // 名称模式影响行内容，需要重建
+        }
+    }
+
+    /// <summary>指标旁的 ? 信息图标：悬停显示说明，不参与勾选，也不影响 OSD 本身的鼠标交互。</summary>
+    private FrameworkElement MakeInfoIcon(string tip)
+    {
+        var mark = new TextBlock
+        {
+            Text = "?",
+            FontSize = 10,
+            FontWeight = FontWeights.Bold,
+            Foreground = TryBrush("TextDimBrush", Brushes.Gray),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        // HelpText 写到 TextBlock 上：UIA 只暴露 TextBlock（Border 没有自动化对等体），
+        // 这样读屏软件与自动化都能读到完整说明
+        System.Windows.Automation.AutomationProperties.SetHelpText(mark, tip);
+        System.Windows.Automation.AutomationProperties.SetName(mark, "硬盘活动率说明");
+        var icon = new Border
+        {
+            Width = 14,
+            Height = 14,
+            CornerRadius = new CornerRadius(7),
+            BorderThickness = new Thickness(1),
+            BorderBrush = TryBrush("LineBrush", Brushes.Gray),
+            Background = TryBrush("ChipBrush", Brushes.Transparent),
+            Margin = new Thickness(2, 0, 10, 0),
+            VerticalAlignment = VerticalAlignment.Center,
+            Cursor = Cursors.Help,
+            Child = mark,
+            // 用 ToolTip 对象以便控制换行宽度
+            ToolTip = new ToolTip { Content = tip, MaxWidth = 380 },
+        };
+        return icon;
+    }
+
+    private static Brush TryBrush(string key, Brush fallback) =>
+        Application.Current?.TryFindResource(key) as Brush ?? fallback;
 
     // ---------------------------------------------------------------- 字号
 

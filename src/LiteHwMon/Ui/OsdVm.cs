@@ -82,7 +82,7 @@ public static class OsdCatalog
 
         var cpu = specs.Where(s => s.Device == DeviceKind.Cpu).ToList();
         if (cpu.Count > 0)
-            list.Add(new OsdHardwareDef { Id = "cpu", Title = "CPU", Kind = DeviceKind.Cpu, Parameters = cpu });
+            list.Add(new OsdHardwareDef { Id = "cpu", Title = OsdModules.CpuRowTitle(engine.CpuName), Kind = DeviceKind.Cpu, Parameters = cpu });
 
         for (int gi = 0; gi < engine.GpuNames.Count; gi++)
         {
@@ -140,49 +140,65 @@ public static class OsdCatalog
     }
 }
 
-/// <summary>OSD 视觉辅助：强调色与紧凑单字标签。</summary>
+/// <summary>OSD 视觉辅助：强调色与硬件/指标命名。</summary>
 public static class OsdModules
 {
     // 高对比亮色系：在压暗的背景板上依然醒目，且不刺眼
     public static Brush AccentOf(DeviceKind kind) => kind switch
     {
-        DeviceKind.Cpu => Make("#7CBCFF"),
-        DeviceKind.Gpu => Make("#C79BFF"),
-        DeviceKind.Memory => Make("#4FE7A8"),
-        DeviceKind.Disk => Make("#FFD166"),
-        _ => Make("#5CDCEB"),
+        DeviceKind.Cpu => Make("#8CC6FF"),
+        DeviceKind.Gpu => Make("#D2ACFF"),
+        DeviceKind.Memory => Make("#5CF0B4"),
+        DeviceKind.Disk => Make("#FFDB7D"),
+        _ => Make("#6FE6F2"),
     };
 
-    /// <summary>多显卡时用短名区分（如 “RTX 4060” / “核显”），单卡用 “GPU”。</summary>
+    /// <summary>是否使用实际硬件型号作为名称（否则用 CPU / GPU 这类通用名称）。</summary>
+    public static bool UseModelName => App.Settings.OsdTitleMode != "Generic";
+
+    /// <summary>CPU 行的显示名称：型号模式下取精简型号（Ryzen 7 7735H），否则 “CPU”。</summary>
+    public static string CpuRowTitle(string fullName)
+    {
+        if (!UseModelName) return "CPU";
+        string s = ShortenCpu(fullName);
+        return s.Length == 0 ? "CPU" : s;
+    }
+
+    /// <summary>GPU 行的显示名称：型号模式下取精简型号（RTX 4060），否则 “GPU”/“GPU2”。</summary>
     public static string GpuRowTitle(string fullName, int index, int total)
     {
-        if (total <= 1) return "GPU";
+        if (!UseModelName) return total <= 1 ? "GPU" : $"GPU{index + 1}";
+        string s = ShortenGpu(fullName);
+        if (s.Length == 0) s = total <= 1 ? "GPU" : $"GPU{index + 1}";
+        return s;
+    }
+
+    /// <summary>把厂商全名压成可读短名，过长才截断。</summary>
+    private static string ShortenCpu(string fullName)
+    {
+        string s = fullName
+            .Replace("(R)", "").Replace("(TM)", "").Replace("(tm)", "")
+            .Replace("AMD ", "").Replace("Intel ", "")
+            .Replace("with Radeon Graphics", "").Replace(" with ", " ")
+            .Trim();
+        // Intel 型号常带 "CPU @ 2.60GHz"
+        int at = s.IndexOf(" CPU", StringComparison.OrdinalIgnoreCase);
+        if (at > 0) s = s[..at].Trim();
+        if (s.Length > 18) s = s[..18].TrimEnd();
+        return s;
+    }
+
+    private static string ShortenGpu(string fullName)
+    {
         string s = fullName
             .Replace("NVIDIA GeForce ", "").Replace("NVIDIA ", "")
             .Replace("AMD Radeon(TM) Graphics", "核显").Replace("AMD Radeon(TM) ", "")
             .Replace("AMD Radeon Graphics", "核显").Replace("AMD Radeon ", "").Replace("AMD ", "")
             .Replace("Intel(R) ", "").Replace("Intel ", "")
             .Replace(" Laptop GPU", "").Replace(" with Radeon Graphics", "").Trim();
-        if (s.Length == 0) s = $"GPU{index + 1}";
-        if (s.Length > 12) s = s[..12];
+        if (s.Length > 16) s = s[..16].TrimEnd();
         return s;
     }
-
-    /// <summary>指标前缀单字（OSD 空间紧凑）。</summary>
-    public static string ShortLabel(ReadingSpec s) => s.Metric switch
-    {
-        MetricKind.Temperature => "温",
-        MetricKind.Clock => "频",
-        MetricKind.Power => "功",
-        MetricKind.Fan => "转",
-        MetricKind.DataRate => s.Name.Contains("读") ? "读" : "写",
-        MetricKind.Data => s.Device == DeviceKind.Gpu ? "存"
-                        : s.Name.Contains("可用") ? "闲" : "用",
-        MetricKind.Load => s.Device == DeviceKind.Disk ? "活"
-                        : s.Name.Contains("显存") ? "存%"
-                        : "占",
-        _ => "值",
-    };
 
     private static SolidColorBrush Make(string hex)
     {

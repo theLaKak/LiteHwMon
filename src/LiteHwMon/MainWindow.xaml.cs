@@ -438,6 +438,14 @@ public partial class MainWindow : Window
 
     private void TrayOsd_Click(object sender, RoutedEventArgs e) => ToggleOsd();
 
+    private void TrayOsdLock_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not MenuItem item) return;
+        App.Settings.OsdLocked = item.IsChecked;
+        App.Settings.Save();
+        _osd?.ApplyLock();
+    }
+
     private void TrayOsdSettings_Click(object sender, RoutedEventArgs e)
     {
         if (_osd == null || !_osd.IsVisible) ToggleOsd(); // 设置窗口需要一个 OSD 实例
@@ -463,6 +471,7 @@ public partial class MainWindow : Window
             switch (item.Tag as string)
             {
                 case "osd": item.IsChecked = _osd?.IsVisible == true; break;
+                case "osdlock": item.IsChecked = App.Settings.OsdLocked; break;
                 case "elevate": item.IsChecked = App.Settings.Elevate; break;
             }
         }

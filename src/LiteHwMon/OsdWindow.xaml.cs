@@ -24,17 +24,21 @@ public partial class OsdWindow : Window
     private List<OsdHardwareDef> _catalog = new();
     private bool _dragging;
     private bool _rowsBuilt;
+    private bool _locked;
     private OsdSettingsWindow? _settingsWindow;
 
     /// <summary>当前探测到的硬件分组（供设置窗口动态渲染两级选择）。</summary>
     public IReadOnlyList<OsdHardwareDef> Catalog => _catalog;
+
+    /// <summary>硬件目录已（重新）构建完成；设置窗口据此在首次枚举完成后补上勾选项。</summary>
+    public event Action? CatalogChanged;
 
     public OsdWindow(MonitorEngine engine)
     {
         InitializeComponent();
         _engine = engine;
         ShowActivated = false;
-        SourceInitialized += (_, _) => MakeNoActivate();
+        SourceInitialized += (_, _) => { MakeNoActivate(); HookHitTest(); };
         Loaded += (_, _) => ClampToScreen();               // 实际尺寸已知后再钳制一次
         SizeChanged += (_, _) => ClampToScreen();          // 内容/布局变化导致尺寸改变时同步钳制
         ApplySettings();
@@ -69,6 +73,32 @@ public partial class OsdWindow : Window
         }
         ClampToScreen();
         BuildRows();
+        ApplyLock();
+    }
+
+    /// <summary>
+    /// 锁定模式：保持置顶、鼠标点击穿透、禁止拖动。
+    /// 解锁后恢复拖动与命中测试。
+    /// </summary>
+    public void ApplyLock()
+    {
+        bool locked = App.Settings.OsdLocked;
+        LockBtn.Content = locked ? "🔒" : "🔓";
+        LockBtn.ToolTip = locked
+            ? "已锁定：置顶 + 鼠标点击穿透（点此解锁后恢复拖动）"
+            : "锁定 OSD：保持置顶、鼠标点击穿透、禁止拖动";
+        if (locked) Topmost = true;                 // 锁定即置顶，与“窗口置顶”设置无关
+        else Topmost = App.Settings.OsdTopmost;
+        _locked = locked;
+        // 锁定后按钮仍可点击（否则无法解锁），其余区域穿透
+        LockBtn.Opacity = locked ? 1.0 : 0.9;
+    }
+
+    private void Lock_Click(object sender, RoutedEventArgs e)
+    {
+        App.Settings.OsdLocked = !App.Settings.OsdLocked;
+        App.Settings.Save();
+        ApplyLock();
     }
 
     /// <summary>
@@ -87,8 +117,22 @@ public partial class OsdWindow : Window
         // 至少保留 8% 底色：分层窗口里完全透明的区域无法命中鼠标，会导致 OSD 拖不动
         double requested = Math.Clamp(s.OsdOpacity, 0, 1);
         double alpha = Math.Clamp(0.08 + 0.92 * requested, 0.08, 1.0);
+        byte a = (byte)Math.Round(alpha * 255);
 
-        var fill = new SolidColorBrush(Color.FromArgb((byte)Math.Round(alpha * 255), r, g, b));
+        // 上浅下深的一点点渐变：面板不再是一块死灰，文字区域显得更“透亮”
+        byte topBoost = (byte)Math.Round(10 * alpha);
+        byte bottomDrop = (byte)Math.Round(8 * alpha);
+        var fill = new LinearGradientBrush
+        {
+            StartPoint = new Point(0, 0),
+            EndPoint = new Point(0, 1),
+            GradientStops =
+            {
+                new GradientStop(Color.FromArgb(a, Add(r, topBoost), Add(g, topBoost), Add(b, topBoost)), 0),
+                new GradientStop(Color.FromArgb(a, r, g, b), 0.55),
+                new GradientStop(Color.FromArgb(a, Sub(r, bottomDrop), Sub(g, bottomDrop), Sub(b, bottomDrop)), 1),
+            },
+        };
         fill.Freeze();
         Backing.Background = fill;
 
@@ -100,7 +144,7 @@ public partial class OsdWindow : Window
         else
         {
             Backing.BorderThickness = new Thickness(1);
-            byte edgeAlpha = (byte)Math.Round(Math.Clamp(0.34 - 0.12 * level, 0.14, 0.34) * (0.35 + 0.65 * alpha) * 255);
+            byte edgeAlpha = (byte)Math.Round(Math.Clamp(0.46 - 0.14 * level, 0.22, 0.46) * (0.35 + 0.65 * alpha) * 255);
             var edge = new SolidColorBrush(Color.FromArgb(edgeAlpha, 0xFF, 0xFF, 0xFF));
             edge.Freeze();
             Backing.BorderBrush = edge;
@@ -109,6 +153,9 @@ public partial class OsdWindow : Window
 
     private static byte Lerp(int from, int to, double t) =>
         (byte)Math.Round(from + (to - from) * t);
+
+    private static byte Add(byte v, int d) => (byte)Math.Min(255, v + d);
+    private static byte Sub(byte v, int d) => (byte)Math.Max(0, v - d);
 
     /// <summary>只更新文字描边（一个 Effect），不重建行。</summary>
     public void ApplyTextEffect() => RowsHost.Effect = App.Settings.OsdTextShadow ? TextOutline : null;
@@ -245,6 +292,7 @@ public partial class OsdWindow : Window
 
         // 行内容变化会改变窗口尺寸：布局完成后再钳制一次，避免指标被挤出屏幕外
         Dispatcher.BeginInvoke(new Action(ClampToScreen), DispatcherPriority.Loaded);
+        try { CatalogChanged?.Invoke(); } catch { }
     }
 
     /// <summary>构建一个硬件组：色条 + 名称 + 指标单元格序列。</summary>
@@ -285,7 +333,7 @@ public partial class OsdWindow : Window
         bool firstCell = true;
         foreach (var spec in specs)
         {
-            var cell = new OsdMetricCell { Spec = spec, Label = OsdModules.ShortLabel(spec) };
+            var cell = new OsdMetricCell { Spec = spec, Label = OsdCatalog.ParameterLabel(spec) };
             cell.Refresh();
             _cells.Add(cell);
 
@@ -299,12 +347,13 @@ public partial class OsdWindow : Window
             {
                 cellPanel.Children.Add(new TextBlock
                 {
-                    Text = cell.Label,
+                    // 完整指标名 + 全角冒号，例如「温度：65°C」；关闭前缀时只显示数值
+                    Text = cell.Label + "：",
                     Foreground = OsdPalette.Label,
                     FontSize = labelSize,
                     FontWeight = FontWeights.SemiBold,
                     VerticalAlignment = VerticalAlignment.Center,
-                    Margin = new Thickness(0, 0, 3, 0),
+                    Margin = new Thickness(0, 0, 2, 0),
                 });
             }
 
@@ -350,6 +399,7 @@ public partial class OsdWindow : Window
 
     private void Root_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_locked) return; // 锁定模式禁止拖动，避免误操作
         if (e.ButtonState == MouseButtonState.Pressed)
         {
             _dragging = true;
@@ -360,6 +410,54 @@ public partial class OsdWindow : Window
     }
 
     private void Root_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => _dragging = false;
+
+    // ---------------------------------------------------------------- 鼠标穿透
+
+    private const int WM_NCHITTEST = 0x0084;
+    private const int HTTRANSPARENT = -1;
+
+    private void HookHitTest()
+    {
+        try
+        {
+            if (PresentationSource.FromVisual(this) is HwndSource src) src.AddHook(WndProc);
+        }
+        catch { }
+    }
+
+    /// <summary>
+    /// 锁定模式下让整块 OSD 对鼠标透明（点击穿透到下层游戏/窗口），
+    /// 仅保留右上角按钮条可命中 —— 否则无法再点按钮解锁。
+    /// 使用 HTTRANSPARENT 而不是 WS_EX_TRANSPARENT，正是为了保留这条例外。
+    /// </summary>
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_NCHITTEST && _locked)
+        {
+            long lp = lParam.ToInt64();
+            int sx = (short)(lp & 0xFFFF);
+            int sy = (short)((lp >> 16) & 0xFFFF);
+            if (!IsOverButtonStrip(sx, sy))
+            {
+                handled = true;
+                return new IntPtr(HTTRANSPARENT);
+            }
+        }
+        return IntPtr.Zero;
+    }
+
+    private bool IsOverButtonStrip(int screenX, int screenY)
+    {
+        try
+        {
+            if (ButtonStrip.ActualWidth <= 0 || ButtonStrip.ActualHeight <= 0) return false;
+            var tl = ButtonStrip.PointToScreen(new Point(0, 0));
+            const double padX = 8, padY = 6; // 命中余量，方便点中
+            return screenX >= tl.X - padX && screenX <= tl.X + ButtonStrip.ActualWidth + padX
+                && screenY >= tl.Y - padY && screenY <= tl.Y + ButtonStrip.ActualHeight + padY;
+        }
+        catch { return false; }
+    }
 
     private void Settings_Click(object sender, RoutedEventArgs e) => OpenSettings();
 

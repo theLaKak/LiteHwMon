@@ -72,8 +72,11 @@
                 <StackPanel x:Name="ButtonStrip" Grid.Column="1" Orientation="Horizontal"
                             Style="{StaticResource OsdButtonStrip}"
                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="14,-2,0,0">
+                    <Button x:Name="LockBtn" Style="{StaticResource OsdIconButton}" Content="🔓"
+                            Click="Lock_Click"
+                            ToolTip="锁定 OSD：保持置顶、鼠标点击穿透、禁止拖动（解锁后恢复）"/>
                     <Button x:Name="SettingsBtn" Style="{StaticResource OsdIconButton}" Content="⚙"
-                            Click="Settings_Click"
+                            Click="Settings_Click" Margin="3,0,0,0"
                             ToolTip="OSD 设置（硬件 / 参数 / 背景 / 字号 / 位置）"/>
                     <Button x:Name="CloseBtn" Style="{StaticResource OsdIconButton}" Content="✕"
                             Click="Close_Click" Margin="3,0,0,0"

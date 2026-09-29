@@ -58,10 +58,10 @@ public sealed class ReadingSpec
         _ => (v.ToString("0.##"), ""),
     };
 
-    /// <summary>图例里的紧凑格式（带单位缩写）。</summary>
+    /// <summary>图例 / OSD 里的紧凑格式（带单位，可直接作为“无前缀”显示）。</summary>
     public string FormatShort(float v) => Metric switch
     {
-        MetricKind.Temperature => $"{v:0}°",
+        MetricKind.Temperature => $"{v:0}°C",
         MetricKind.Load => $"{v:0}%",
         MetricKind.Clock => v >= 10000 ? $"{v / 1000:0.00}G" : $"{v:0}M",
         MetricKind.Power => $"{v:0.0}W",

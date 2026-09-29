@@ -48,12 +48,16 @@ public sealed class AppSettings
     public string OsdLayout { get; set; } = "Vertical";
     /// <summary>显示硬件名称列。</summary>
     public bool OsdShowTitle { get; set; } = true;
-    /// <summary>显示指标前缀单字（温/占/频…）。</summary>
-    public bool OsdShowLabels { get; set; } = true;
+    /// <summary>硬件名称显示模式：Model = 实际型号（Ryzen 7 7735H / RTX 4060）；Generic = 通用名称（CPU / GPU）。</summary>
+    public string OsdTitleMode { get; set; } = "Model";
+    /// <summary>显示指标前缀（温度：65°C）。关闭时只显示数值（65°C）。</summary>
+    public bool OsdShowLabels { get; set; }
     /// <summary>文字描边（深色光晕），复杂游戏画面上提升可读性。</summary>
     public bool OsdTextShadow { get; set; } = true;
     /// <summary>背景板深浅 0（近黑，对比最强）–1（石板灰）。</summary>
-    public double OsdBackingLevel { get; set; } = 0.40;
+    public double OsdBackingLevel { get; set; } = 0.55;
+    /// <summary>OSD 锁定：保持置顶、鼠标点击穿透、禁止拖动与编辑。</summary>
+    public bool OsdLocked { get; set; }
     /// <summary>硬件 + 参数两级配置（键为硬件 Id，如 cpu/gpu:0/memory/disk:0/fan:0）。</summary>
     public List<OsdHardwareEntry> OsdHardware { get; set; } = new();
 
@@ -97,6 +101,7 @@ public sealed class AppSettings
         if (Enum.TryParse<MetricKind>(MetricTab, out _) == false) MetricTab = nameof(MetricKind.Temperature);
         OsdOpacity = Math.Clamp(OsdOpacity, 0, 1);
         OsdBackingLevel = Math.Clamp(OsdBackingLevel, 0, 1);
+        if (OsdTitleMode is not ("Model" or "Generic")) OsdTitleMode = "Model";
         OsdFontSize = Math.Clamp(OsdFontSize, 11, 20);
         OsdTitleScale = Math.Clamp(OsdTitleScale, 0.6, 2);
         OsdValueScale = Math.Clamp(OsdValueScale, 0.6, 2);

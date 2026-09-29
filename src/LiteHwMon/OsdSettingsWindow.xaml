@@ -120,9 +120,24 @@
                     <WrapPanel Margin="0,6,0,0">
                         <CheckBox x:Name="ShowTitleCheck" Content="显示硬件名称" Style="{StaticResource Chk}"
                                   Checked="ShowTitle_Changed" Unchecked="ShowTitle_Changed"/>
-                        <CheckBox x:Name="ShowLabelsCheck" Content="显示指标前缀（温/占/频）" Style="{StaticResource Chk}"
-                                  Checked="ShowLabels_Changed" Unchecked="ShowLabels_Changed"/>
+                        <CheckBox x:Name="ShowLabelsCheck" Content="显示指标前缀（温度：65°C）" Style="{StaticResource Chk}"
+                                  Checked="ShowLabels_Changed" Unchecked="ShowLabels_Changed"
+                                  ToolTip="关闭时只显示数值（65°C）；开启后显示「温度：65°C」"/>
                     </WrapPanel>
+                    <Grid Style="{StaticResource SliderGrid}">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="150"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="48"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="硬件名称显示模式" Style="{StaticResource Lbl}"/>
+                        <ComboBox Grid.Column="1" x:Name="TitleModeCombo" Style="{StaticResource ComboDark}"
+                                  SelectionChanged="TitleMode_SelectionChanged"
+                                  ToolTip="型号：显示实际硬件型号（Ryzen 7 7735H / RTX 4060）；通用名称：显示 CPU / GPU">
+                            <ComboBoxItem Content="硬件型号" Tag="Model"/>
+                            <ComboBoxItem Content="通用名称" Tag="Generic"/>
+                        </ComboBox>
+                    </Grid>
                 </StackPanel>
             </Border>
 
