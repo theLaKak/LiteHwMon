@@ -1,0 +1,294 @@
+<Window x:Class="LiteHwMon.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:ui="clr-namespace:LiteHwMon.Ui"
+        xmlns:tb="http://www.hardcodet.net/taskbar"
+        Title="轻量硬件监控 LiteHwMon"
+        Width="1280" Height="820" MinWidth="1020" MinHeight="660"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" ResizeMode="CanResize"
+        Background="{StaticResource BgBrush}"
+        FontFamily="Segoe UI" TextOptions.TextRenderingMode="ClearType"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        Icon="/app.ico">
+
+    <shell:WindowChrome.WindowChrome>
+        <shell:WindowChrome CaptionHeight="40"
+                            ResizeBorderThickness="6"
+                            GlassFrameThickness="0"
+                            CornerRadius="0"
+                            UseAeroCaptionButtons="False"/>
+    </shell:WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <tb:TaskbarIcon x:Key="TrayIcon"
+                        ToolTipText="轻量硬件监控 LiteHwMon —— 双击显示主窗口"
+                        IconSource="/app.ico"
+                        TrayMouseDoubleClick="TrayIcon_DoubleClick"
+                        TrayContextMenuOpen="TrayIcon_MenuOpen">
+            <tb:TaskbarIcon.ContextMenu>
+                <ContextMenu>
+                    <MenuItem Header="显示窗口" Click="TrayOpen_Click" FontWeight="SemiBold"/>
+                    <MenuItem Header="OSD 悬浮窗" Tag="osd" IsCheckable="True" Click="TrayOsd_Click"/>
+                    <MenuItem Header="OSD 设置…" Click="TrayOsdSettings_Click"/>
+                    <Separator/>
+                    <MenuItem Header="启动时请求管理员权限" Tag="elevate" IsCheckable="True" Click="TrayElevate_Click"
+                              ToolTip="关闭后不再出现 UAC 提权；CPU 功耗、风扇转速等需要驱动的数据将不可用"/>
+                    <Separator/>
+                    <MenuItem Header="退出应用" Click="TrayExit_Click"/>
+                </ContextMenu>
+            </tb:TaskbarIcon.ContextMenu>
+        </tb:TaskbarIcon>
+
+        <!-- 设备卡片模板 -->
+        <DataTemplate x:Key="CardTemplate">
+            <Border Style="{StaticResource CardBorder}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="{Binding Title}" Style="{StaticResource CardTitle}"/>
+                        <TextBlock Grid.Column="1" Text="{Binding Subtitle}" Style="{StaticResource CardSub}"
+                                   Margin="10,0,0,0" HorizontalAlignment="Right"
+                                   ToolTip="{Binding Subtitle}"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Metrics}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Columns="4"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource TileBorder}" ToolTip="{Binding Hint}">
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Label}" Style="{StaticResource MetricLabel}"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                            <TextBlock Text="{Binding ValueText}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource MetricValue}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Available}" Value="False">
+                                                                <Setter Property="FontSize" Value="12"/>
+                                                                <Setter Property="FontWeight" Value="Normal"/>
+                                                                <Setter Property="Foreground" Value="{StaticResource TextDimBrush}"/>
+                                                                <Setter Property="VerticalAlignment" Value="Center"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <TextBlock Text="{Binding Unit}" Style="{StaticResource MetricUnit}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- 曲线图例模板 -->
+        <DataTemplate x:Key="LegendTemplate">
+            <Border Style="{StaticResource LegendRow}" MouseLeftButtonDown="LegendRow_Click" Tag="{Binding}"
+                    ToolTip="点击 显示 / 隐藏 该曲线">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="62"/>
+                        <ColumnDefinition Width="62"/>
+                        <ColumnDefinition Width="62"/>
+                        <ColumnDefinition Width="62"/>
+                    </Grid.ColumnDefinitions>
+                    <Rectangle Width="10" Height="10" RadiusX="3" RadiusY="3" Fill="{Binding Brush}"
+                               VerticalAlignment="Center" Opacity="{Binding Visible, Converter={x:Static ui:BoolToOpacity.Instance}}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding Name}" Style="{StaticResource LegendText}"
+                               Margin="4,0,8,0" TextTrimming="CharacterEllipsis"
+                               Opacity="{Binding Visible, Converter={x:Static ui:BoolToOpacity.Instance}}"/>
+                    <TextBlock Grid.Column="2" Text="{Binding Cur}" Style="{StaticResource LegendNum}" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="3" Text="{Binding Min}" Style="{StaticResource LegendNum}" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="4" Text="{Binding Max}" Style="{StaticResource LegendNum}" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="5" Text="{Binding Avg}" Style="{StaticResource LegendNum}"/>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="32"/>
+        </Grid.RowDefinitions>
+
+        <!-- ======== 标题栏 ======== -->
+        <Grid Background="{StaticResource TitleBarBrush}">
+            <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+                <Rectangle Width="10" Height="10" RadiusX="3" RadiusY="3" Fill="{StaticResource AccentBrush}"/>
+                <TextBlock Text="轻量硬件监控" FontSize="13" FontWeight="SemiBold"
+                           Foreground="{StaticResource TextBrush}" Margin="8,0,0,0" VerticalAlignment="Center"/>
+                <TextBlock Text="LiteHwMon" FontSize="11" Foreground="{StaticResource TextDimBrush}"
+                           Margin="8,1,0,0" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                        WindowChrome.IsHitTestVisibleInChrome="True">
+                <Border Style="{StaticResource Chip}" x:Name="ElevChipBorder" Visibility="Collapsed">
+                    <TextBlock Text="{Binding ElevChip}" Style="{StaticResource ChipText}"/>
+                </Border>
+                <Border Style="{StaticResource Chip}">
+                    <TextBlock Text="{Binding DriverChip}" Style="{StaticResource ChipText}"/>
+                </Border>
+                <Button Style="{StaticResource CaptionBtn}" Content="OSD" Click="BtnOsd_Click"
+                        ToolTip="游戏悬浮窗开关（显示勾选的硬件指标）"
+                        FontFamily="Segoe UI" FontSize="11" FontWeight="SemiBold" Width="40"/>
+                <Button Style="{StaticResource CaptionBtn}" Content="&#xE921;" Click="BtnMin_Click" Margin="10,0,0,0"/>
+                <Button Style="{StaticResource CaptionBtn}" Content="&#xE922;" Click="BtnMax_Click"/>
+                <Button Style="{StaticResource CaptionBtn}" Content="&#xE8BB;" Click="BtnClose_Click"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- ======== 未提权提示条 ======== -->
+        <Border Grid.Row="1" x:Name="ElevateBanner" Background="{StaticResource BannerBrush}"
+                Padding="14,7" Visibility="Collapsed">
+            <Grid>
+                <TextBlock Foreground="{StaticResource WarnBrush}" FontSize="11.5" VerticalAlignment="Center"
+                           Text="当前未以管理员身份运行，温度 / 功耗 / 风扇转速可能无法读取（其余数据不受影响）。"/>
+                <Button HorizontalAlignment="Right" Cursor="Hand" Click="BannerElevate_Click"
+                        Background="Transparent" BorderThickness="0" Foreground="{StaticResource AccentBrush}"
+                        FontSize="11.5" Content="以管理员身份重启 →"/>
+            </Grid>
+        </Border>
+
+        <!-- ======== 缺少 PawnIO 提示条（AMD 温度读不到时的可执行修复指引） ======== -->
+        <Border Grid.Row="1" x:Name="PawnIoBanner" Background="{StaticResource BannerBrush}"
+                Padding="14,7" Visibility="Collapsed">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock x:Name="PawnIoBannerText" Foreground="{StaticResource WarnBrush}" FontSize="11.5"
+                           VerticalAlignment="Center" TextWrapping="Wrap"
+                           Text="未检测到 PawnIO 驱动：CPU 温度与风扇转速需要它。点「安装 PawnIO」自动安装，装完需重启本程序。"/>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                    <Button x:Name="PawnIoInstallBtn" Cursor="Hand" Click="BannerPawnIoInstall_Click"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource AccentBrush}"
+                            FontSize="11.5" FontWeight="SemiBold" Content="安装 PawnIO →"
+                            ToolTip="自动下载官方安装包（GitHub Releases），校验 Authenticode 签名与签名者后静默安装"/>
+                    <Button Cursor="Hand" Click="BannerPawnIoSteps_Click" Margin="12,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextDimBrush}"
+                            FontSize="11.5" Content="安装步骤" ToolTip="查看手动安装步骤（无法自动安装时使用）"/>
+                    <Button Cursor="Hand" Click="BannerPawnIo_Click" Margin="12,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextDimBrush}"
+                            FontSize="11.5" Content="官网" ToolTip="打开 pawnio.eu"/>
+                    <Button Cursor="Hand" Click="BannerPawnIoHide_Click" Margin="12,0,0,0"
+                            Background="Transparent" BorderThickness="0" Foreground="{StaticResource TextDimBrush}"
+                            FontSize="11.5" Content="不再提示" ToolTip="本次及以后不再显示这条提示"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- ======== 主体 ======== -->
+        <Grid Grid.Row="2" Margin="12,10,12,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="430"/>
+                <ColumnDefinition Width="14"/>
+                <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- 左：设备卡片 -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto"
+                          Padding="0,0,2,0">
+                <ItemsControl x:Name="CardsHost" ItemsSource="{Binding Cards}"
+                              ItemTemplate="{StaticResource CardTemplate}"/>
+            </ScrollViewer>
+
+            <!-- 右：实时曲线 -->
+            <Border Grid.Column="2" Style="{StaticResource CardBorder}">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="38"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 指标页签 -->
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <RadioButton Style="{StaticResource SegRadio}" Content="温度" Tag="Temperature"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="占用率" Tag="Load"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="频率" Tag="Clock"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="功耗" Tag="Power"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="风扇" Tag="Fan"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="磁盘速率" Tag="DataRate"
+                                     Checked="MetricTab_Checked" GroupName="metric"/>
+                    </StackPanel>
+
+                    <!-- 曲线 -->
+                    <ui:SensorChart Grid.Row="1" x:Name="Chart" Margin="2,2,4,0"
+                                    SeriesSource="{Binding Legend}"
+                                    WindowSeconds="{Binding WindowSeconds}"/>
+
+                    <!-- 图例：当前 / 最小 / 最大 / 平均 -->
+                    <StackPanel Grid.Row="2" Margin="8,6,8,4">
+                        <Grid Margin="6,0,6,3">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="16"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="62"/>
+                                <ColumnDefinition Width="62"/>
+                                <ColumnDefinition Width="62"/>
+                                <ColumnDefinition Width="62"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="1" Text="{Binding LegendHeader}" Style="{StaticResource LegendText}"/>
+                            <TextBlock Grid.Column="2" Text="当前" Style="{StaticResource LegendText}" TextAlignment="Right" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="3" Text="最小" Style="{StaticResource LegendText}" TextAlignment="Right" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="4" Text="最大" Style="{StaticResource LegendText}" TextAlignment="Right" Margin="0,0,10,0"/>
+                            <TextBlock Grid.Column="5" Text="平均" Style="{StaticResource LegendText}" TextAlignment="Right"/>
+                        </Grid>
+                        <ItemsControl ItemsSource="{Binding Legend}"
+                                      ItemTemplate="{StaticResource LegendTemplate}"/>
+                    </StackPanel>
+
+                    <!-- 时间窗口 -->
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right"
+                                VerticalAlignment="Bottom" Margin="0,4,2,0">
+                        <TextBlock Text="时间窗口" Style="{StaticResource StatusText}" Margin="0,0,8,1"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="1 分钟" Tag="1" GroupName="win" Checked="Window_Checked"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="5 分钟" Tag="5" GroupName="win" Checked="Window_Checked"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="10 分钟" Tag="10" GroupName="win" Checked="Window_Checked"/>
+                        <RadioButton Style="{StaticResource SegRadio}" Content="30 分钟" Tag="30" GroupName="win" Checked="Window_Checked"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ======== 状态栏 ======== -->
+        <Grid Grid.Row="3" Margin="14,0,14,0" Background="{StaticResource TitleBarBrush}">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Text="刷新间隔" Style="{StaticResource StatusText}" Margin="0,0,6,0"/>
+                <ComboBox x:Name="IntervalBox" Style="{StaticResource ComboDark}" Width="78"
+                          SelectionChanged="Interval_SelectionChanged">
+                    <ComboBoxItem Content="0.5 秒" Tag="500"/>
+                    <ComboBoxItem Content="1 秒" Tag="1000"/>
+                    <ComboBoxItem Content="2 秒" Tag="2000"/>
+                    <ComboBoxItem Content="5 秒" Tag="5000"/>
+                </ComboBox>
+                <TextBlock Text="{Binding StatusText}" Style="{StaticResource StatusText}" Margin="14,0,0,0"/>
+            </StackPanel>
+            <TextBlock Text="{Binding SelfStats}" Style="{StaticResource StatusText}"
+                       HorizontalAlignment="Right"/>
+        </Grid>
+    </Grid>
+</Window>

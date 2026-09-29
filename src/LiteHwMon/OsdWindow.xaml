@@ -1,0 +1,85 @@
+<Window x:Class="LiteHwMon.OsdWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="游戏监控 OSD"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ShowInTaskbar="False" ShowActivated="False"
+        SizeToContent="WidthAndHeight"
+        ResizeMode="NoResize"
+        FontFamily="Segoe UI"
+        TextOptions.TextFormattingMode="Display"
+        UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Window.Resources>
+        <!-- OSD 角落的小按钮：平时低调，悬停时给明确反馈 -->
+        <Style x:Key="OsdIconButton" TargetType="Button">
+            <Setter Property="Width" Value="21"/>
+            <Setter Property="Height" Value="19"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#C6D0E0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="5">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Background" Value="#38FFFFFF"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="OsdButtonStrip" TargetType="StackPanel">
+            <Setter Property="Opacity" Value="0.7"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="1"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <!-- 外边距为背景板投影留出渲染空间（分层窗口下不会被裁切） -->
+    <Grid Margin="7">
+        <!-- 背景板：唯一受“背景不透明度 / 背景深浅”影响的图层 -->
+        <Border x:Name="Backing" CornerRadius="11" BorderThickness="1">
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="14" ShadowDepth="2" Direction="270"
+                                  Opacity="0.62" Color="#000000"/>
+            </Border.Effect>
+        </Border>
+
+        <!-- 内容层：背景完全透明，文字与数值始终保持 100% 亮度 -->
+        <Border x:Name="Root" Background="Transparent" CornerRadius="11" Padding="13,9"
+                MouseLeftButtonDown="Root_MouseLeftButtonDown"
+                MouseLeftButtonUp="Root_MouseLeftButtonUp">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel x:Name="RowsHost" Grid.Column="0" Orientation="Vertical"/>
+
+                <StackPanel x:Name="ButtonStrip" Grid.Column="1" Orientation="Horizontal"
+                            Style="{StaticResource OsdButtonStrip}"
+                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="14,-2,0,0">
+                    <Button x:Name="SettingsBtn" Style="{StaticResource OsdIconButton}" Content="⚙"
+                            Click="Settings_Click"
+                            ToolTip="OSD 设置（硬件 / 参数 / 背景 / 字号 / 位置）"/>
+                    <Button x:Name="CloseBtn" Style="{StaticResource OsdIconButton}" Content="✕"
+                            Click="Close_Click" Margin="3,0,0,0"
+                            ToolTip="关闭悬浮窗（可在主窗口重新开启）"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
