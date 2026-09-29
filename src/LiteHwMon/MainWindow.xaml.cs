@@ -206,7 +206,7 @@ public partial class MainWindow : Window
 
     private void AddMetric(CardVM card, ReadingSpec spec, ref int color)
     {
-        var vm = new MetricVM { Spec = spec, Label = spec.Name };
+        var vm = new MetricVM { Spec = spec, Label = spec.Name, Info = MetricHelp.For(spec) };
         vm.UpdateFromSpec();
         card.Metrics.Add(vm);
         _allMetrics.Add(vm);

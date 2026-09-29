@@ -22,12 +22,42 @@ public sealed class MetricVM : ObservableObject
     private string _valueText = "—";
     private string _unit = "";
     private string? _hint;
+    private string? _info;
     private bool _available;
 
     public string Label { get; init; } = "";
 
-    /// <summary>鼠标悬停说明；null 表示不显示提示（例如数值正常时）。</summary>
-    public string? Hint { get => _hint; set { if (_hint == value) return; _hint = value; Raise(); } }
+    /// <summary>不可用原因等动态说明；null 表示没有。</summary>
+    public string? Hint
+    {
+        get => _hint;
+        set { if (_hint == value) return; _hint = value; Raise(); Raise(nameof(TooltipText)); }
+    }
+
+    /// <summary>参数本身的解释（磁贴右上角显示 ? 图标）；null 表示该指标不需要解释。</summary>
+    public string? Info
+    {
+        get => _info;
+        set
+        {
+            if (_info == value) return;
+            _info = value;
+            Raise();
+            Raise(nameof(HasInfo));
+            Raise(nameof(TooltipText));
+        }
+    }
+
+    public bool HasInfo => !string.IsNullOrEmpty(_info);
+
+    /// <summary>磁贴的悬停提示：参数说明与不可用原因合并显示。</summary>
+    public string? TooltipText => (HasInfo, !string.IsNullOrEmpty(_hint)) switch
+    {
+        (true, true) => _info + "\n\n" + _hint,
+        (true, false) => _info,
+        (false, true) => _hint,
+        _ => null,
+    };
 
     // 赋值前比较：数值没变就不发通知，避免每秒对每个磁贴重复触发 WPF 绑定更新
     public string ValueText { get => _valueText; private set { if (_valueText == value) return; _valueText = value; Raise(); } }

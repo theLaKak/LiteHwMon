@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 
 namespace LiteHwMon.Ui;
@@ -10,6 +11,18 @@ public sealed class BoolToOpacity : IValueConverter
 
     public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
         value is true ? 1.0 : 0.4;
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
+        throw new NotSupportedException();
+}
+
+/// <summary>bool → Visibility：只区分显示/隐藏，不占用布局空间。</summary>
+public sealed class BoolToVisibility : IValueConverter
+{
+    public static readonly BoolToVisibility Instance = new();
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture) =>
+        value is true ? Visibility.Visible : Visibility.Collapsed;
 
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();

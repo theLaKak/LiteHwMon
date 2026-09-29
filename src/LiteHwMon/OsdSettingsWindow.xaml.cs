@@ -18,17 +18,8 @@ public partial class OsdSettingsWindow : Window
     // 初始为 true：XAML 解析时 Slider 的 ValueChanged 会先于 LoadSettings 触发
     private bool _loading = true;
 
-    /// <summary>硬盘活动率的说明（含义 / 数值解释 / 数据来源 / 适用场景）。</summary>
-    private const string DiskActivityTip =
-        "硬盘活动率（%）\n" +
-        "\n" +
-        "是什么：采样周期内磁盘处于忙碌状态的时间占比。100% 表示该周期内磁盘一直在处理 I/O 请求，0% 表示完全空闲。\n" +
-        "\n" +
-        "数值含义：它衡量的是“忙不忙”，不是“快不快”。活动率与吞吐量没有固定关系 —— 大量小文件随机读写可能长时间 100% 但速度很低；单个大文件顺序读写也可能只占用 20% 就跑满带宽。\n" +
-        "\n" +
-        "数据来源：优先读取硬盘 SMART 的 Activity 传感器（LibreHardwareMonitor）；读取不到时回退到 Windows 性能计数器 PhysicalDisk\\% Idle Time，按“100 − 空闲率”换算。\n" +
-        "\n" +
-        "适用场景：判断卡顿是否由磁盘引起；观察后台更新、杀毒扫描、索引服务对磁盘的持续占用；确认 SSD 是否被长时间写满。";
+    /// <summary>硬盘活动率的说明（与主窗口磁贴上的 ? 共用同一份文案）。</summary>
+    private const string DiskActivityTip = MetricHelp.DiskActivity;
 
     public OsdSettingsWindow(OsdWindow osd)
     {

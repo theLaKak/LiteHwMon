@@ -64,27 +64,43 @@
                         </ItemsControl.ItemsPanel>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource TileBorder}" ToolTip="{Binding Hint}">
-                                    <StackPanel>
-                                        <TextBlock Text="{Binding Label}" Style="{StaticResource MetricLabel}"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                                            <TextBlock Text="{Binding ValueText}">
-                                                <TextBlock.Style>
-                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource MetricValue}">
-                                                        <Style.Triggers>
-                                                            <DataTrigger Binding="{Binding Available}" Value="False">
-                                                                <Setter Property="FontSize" Value="12"/>
-                                                                <Setter Property="FontWeight" Value="Normal"/>
-                                                                <Setter Property="Foreground" Value="{StaticResource TextDimBrush}"/>
-                                                                <Setter Property="VerticalAlignment" Value="Center"/>
-                                                            </DataTrigger>
-                                                        </Style.Triggers>
-                                                    </Style>
-                                                </TextBlock.Style>
-                                            </TextBlock>
-                                            <TextBlock Text="{Binding Unit}" Style="{StaticResource MetricUnit}"/>
+                                <Border Style="{StaticResource TileBorder}" ToolTip="{Binding TooltipText}">
+                                    <Grid>
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Label}" Style="{StaticResource MetricLabel}"
+                                                       AutomationProperties.HelpText="{Binding TooltipText}"/>
+                                            <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                                <TextBlock Text="{Binding ValueText}">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource MetricValue}">
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding Available}" Value="False">
+                                                                    <Setter Property="FontSize" Value="12"/>
+                                                                    <Setter Property="FontWeight" Value="Normal"/>
+                                                                    <Setter Property="Foreground" Value="{StaticResource TextDimBrush}"/>
+                                                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                </TextBlock>
+                                                <TextBlock Text="{Binding Unit}" Style="{StaticResource MetricUnit}"/>
+                                            </StackPanel>
                                         </StackPanel>
-                                    </StackPanel>
+
+                                        <!-- 参数说明入口：仅对需要解释的指标（如硬盘活动率）显示 -->
+                                        <Border x:Name="InfoBadge" Width="14" Height="14" CornerRadius="7"
+                                                HorizontalAlignment="Right" VerticalAlignment="Top"
+                                                Margin="0,-2,-2,0" BorderThickness="1"
+                                                BorderBrush="{StaticResource TextDimBrush}"
+                                                Background="{StaticResource ChipBrush}"
+                                                Cursor="Help"
+                                                Visibility="{Binding HasInfo, Converter={x:Static ui:BoolToVisibility.Instance}}">
+                                            <TextBlock Text="?" FontSize="9.5" FontWeight="Bold"
+                                                       Foreground="{StaticResource TextBrush}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                    </Grid>
                                 </Border>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
