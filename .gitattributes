@@ -1,0 +1,15 @@
+# 统一换行符，避免不同平台提交产生整文件差异
+* text=auto
+
+*.cs       text eol=crlf
+*.xaml     text eol=crlf
+*.csproj   text eol=crlf
+*.ps1      text eol=crlf
+*.cmd      text eol=crlf
+
+# 二进制文件不做换行符转换
+*.sys  binary
+*.ico  binary
+*.png  binary
+*.dll  binary
+*.exe  binary
