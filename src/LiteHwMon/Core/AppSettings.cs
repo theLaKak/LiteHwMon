@@ -58,6 +58,8 @@ public sealed class AppSettings
     public double OsdBackingLevel { get; set; } = 0.55;
     /// <summary>OSD 锁定：保持置顶、鼠标点击穿透、禁止拖动与编辑。</summary>
     public bool OsdLocked { get; set; }
+    /// <summary>是否已向用户解释过锁定行为（只提示一次，之后点击直接生效）。</summary>
+    public bool OsdLockHintShown { get; set; }
     /// <summary>硬件 + 参数两级配置（键为硬件 Id，如 cpu/gpu:0/memory/disk:0/fan:0）。</summary>
     public List<OsdHardwareEntry> OsdHardware { get; set; } = new();
 

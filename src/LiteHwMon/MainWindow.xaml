@@ -88,16 +88,21 @@
                                             </StackPanel>
                                         </StackPanel>
 
-                                        <!-- 参数说明入口：仅对需要解释的指标（如硬盘活动率）显示 -->
-                                        <Border x:Name="InfoBadge" Width="14" Height="14" CornerRadius="7"
+                                        <!-- 参数说明入口：仅对需要解释的指标（如硬盘活动率）显示。
+                                             说明挂在徽标本身，且内部文字不参与命中测试，
+                                             否则鼠标会落在没有提示的子元素上导致提示不弹出。 -->
+                                        <Border x:Name="InfoBadge" Width="15" Height="15" CornerRadius="8"
                                                 HorizontalAlignment="Right" VerticalAlignment="Top"
                                                 Margin="0,-2,-2,0" BorderThickness="1"
                                                 BorderBrush="{StaticResource TextDimBrush}"
                                                 Background="{StaticResource ChipBrush}"
-                                                Cursor="Help"
+                                                Cursor="Hand"
+                                                ToolTip="{Binding TooltipText}"
+                                                ToolTipService.InitialShowDelay="150"
                                                 Visibility="{Binding HasInfo, Converter={x:Static ui:BoolToVisibility.Instance}}">
-                                            <TextBlock Text="?" FontSize="9.5" FontWeight="Bold"
+                                            <TextBlock Text="?" FontSize="10" FontWeight="Bold"
                                                        Foreground="{StaticResource TextBrush}"
+                                                       IsHitTestVisible="False"
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
                                     </Grid>

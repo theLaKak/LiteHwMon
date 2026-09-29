@@ -86,16 +86,39 @@ public partial class OsdWindow : Window
         LockBtn.Content = locked ? "🔒" : "🔓";
         LockBtn.ToolTip = locked
             ? "已锁定：置顶 + 鼠标点击穿透（点此解锁后恢复拖动）"
-            : "锁定 OSD：保持置顶、鼠标点击穿透、禁止拖动";
+            : "锁定 OSD：保持置顶、鼠标点击穿透、禁止拖动（建议先摆好位置）";
+        // 锁定时把按钮条整体提亮，让「怎么解锁」一眼可见
+        ButtonStrip.Opacity = locked ? 0.95 : 0.7;
         if (locked) Topmost = true;                 // 锁定即置顶，与“窗口置顶”设置无关
         else Topmost = App.Settings.OsdTopmost;
         _locked = locked;
-        // 锁定后按钮仍可点击（否则无法解锁），其余区域穿透
-        LockBtn.Opacity = locked ? 1.0 : 0.9;
     }
 
     private void Lock_Click(object sender, RoutedEventArgs e)
     {
+        // 默认不锁：OSD 打开即可拖动。锁定是「摆好位置之后」的显式动作，
+        // 首次锁定先说明后果与解锁方式（之后点击直接生效，不再打扰）。
+        if (!App.Settings.OsdLocked && !App.Settings.OsdLockHintShown)
+        {
+            App.Settings.OsdLockHintShown = true;
+            App.Settings.Save();
+
+            const string tip =
+                "即将锁定 OSD：\n\n" +
+                "· 保持置顶，始终显示在游戏与其它窗口上方\n" +
+                "· 鼠标点击穿透到下层窗口，OSD 不再响应拖动\n" +
+                "· 右上角按钮仍可点击\n\n" +
+                "解锁方式：点 OSD 右上角的 🔒 按钮，或托盘菜单 →「锁定 OSD（鼠标穿透）」。\n\n" +
+                "建议：先把 OSD 拖到合适的位置，再锁定。现在要锁定吗？";
+
+            var owner = Application.Current?.Windows.OfType<Window>()
+                .FirstOrDefault(w => w is MainWindow { IsVisible: true });
+            var result = owner != null
+                ? MessageBox.Show(owner, tip, "锁定 OSD", MessageBoxButton.OKCancel, MessageBoxImage.Information, MessageBoxResult.Cancel)
+                : MessageBox.Show(tip, "锁定 OSD", MessageBoxButton.OKCancel, MessageBoxImage.Information, MessageBoxResult.Cancel);
+            if (result != MessageBoxResult.OK) return;
+        }
+
         App.Settings.OsdLocked = !App.Settings.OsdLocked;
         App.Settings.Save();
         ApplyLock();
