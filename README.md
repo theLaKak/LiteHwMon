@@ -268,6 +268,12 @@ src/AmdProbe/                # 开发用探针：WinRing0 / SMN / RAPL 通路验
 tools/                       # 图标生成 / 调试脚本
 ```
 
+## 许可证
+
+本程序自身代码采用 **MIT License**，见 [LICENSE](LICENSE)。
+
+第三方组件（LibreHardwareMonitorLib 与随包分发的 `WinRing0x64.sys` 为 MPL-2.0，Hardcodet.NotifyIcon.Wpf 与 System.Management 为 MIT）适用各自条款，见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。PawnIO 为运行时可选的第三方内核驱动，本仓库不包含其任何文件。
+
 ## 已知限制
 
 - **CPU 温度与风扇转速需要 [PawnIO](https://pawnio.eu/)**，未安装时显示「不可用」；安装后重启程序生效
