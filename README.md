@@ -8,6 +8,25 @@
 
 ---
 
+## 界面预览
+
+<p align="center">
+  <img src="docs/screenshot-main.png" width="800" alt="主窗口：设备卡片与实时曲线"><br>
+  <b>主窗口</b> — 设备卡片、实时曲线、统计图例与状态栏，深色现代风格
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-osd.png" width="500" alt="游戏 OSD 悬浮窗"><br>
+  <b>游戏 OSD 悬浮窗</b> — 置顶悬浮、可锁定鼠标穿透，复杂游戏画面上仍清晰可读
+</p>
+
+<p align="center">
+  <img src="docs/screenshot-osd-settings.png" width="420" alt="OSD 设置窗口"><br>
+  <b>OSD 设置窗口</b> — 硬件/指标两级勾选、布局与字号、背景外观、九宫格定位，全部实时生效
+</p>
+
+---
+
 > [!IMPORTANT]
 > ## 首次使用必读
 >
@@ -81,8 +100,6 @@ CPU 温度磁贴显示「不可用」时，鼠标悬停可看到属于上表哪�
 - 位置与锁定状态自动保存，重启后恢复
 - `WS_EX_NOACTIVATE`：不抢游戏焦点、不出现在 Alt+Tab；窗口化 / 无边框游戏可正常悬浮
 - 与主窗口共用同一份采样引擎，不额外增加采样线程
-
-![OSD 预览](tools/osd-preview.png)
 
 ## PawnIO 依赖说明
 
